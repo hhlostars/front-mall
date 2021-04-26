@@ -3,6 +3,13 @@
     <nav-bar class="home-nav">
       <template v-slot:center> 购物街 </template>
     </nav-bar>
+    <tab-control
+      class="tab-control"
+      :titles="['流行', '新款', '精选']"
+      @tabClick="tabClick"
+      ref="tabControl1"
+      v-show="isTabfixed"
+    ></tab-control>
 
     <scroll
       class="content"
@@ -12,14 +19,17 @@
       :pull-up-load="true"
       @pullingUp="loadMore"
     >
-      <home-swiper :banners="banners"></home-swiper>
+      <home-swiper
+        :banners="banners"
+        @swiperImageLoad="swiperImageLoad"
+      ></home-swiper>
       <recommend-view :recommends="recommends"></recommend-view>
       <feature-view></feature-view>
 
       <tab-control
-        class="tab-control"
         :titles="['流行', '新款', '精选']"
         @tabClick="tabClick"
+        ref="tabControl2"
       ></tab-control>
 
       <goods-list :goods="showGoods"></goods-list>
@@ -43,6 +53,8 @@ import { getHomeMultidata, getHomeGoods } from "network/home";
 
 import GoodsList from "components/content/goods/GoodsList";
 
+import { debounce } from "common/utils";
+
 export default {
   name: "Home",
 
@@ -61,6 +73,28 @@ export default {
     BackTop,
   },
 
+  data() {
+    return {
+      banners: [],
+      recommends: [],
+      goods: {
+        pop: { page: 0, list: [] },
+        new: { page: 0, list: [] },
+        sell: { page: 0, list: [] },
+      },
+
+      currentType: "pop",
+
+      isShowBackTop: false,
+
+      // 记录吸顶的元素位置
+      tabOffsetTop: 0,
+      isTabfixed: false,
+
+      saveY: 0,
+    };
+  },
+
   computed: {
     showGoods() {
       return this.goods[this.currentType].list;
@@ -73,6 +107,28 @@ export default {
     this.getHomeGoods("pop");
     this.getHomeGoods("new");
     this.getHomeGoods("sell");
+  },
+
+  mounted() {
+    // 防抖处理
+    const refresh = debounce(this.$refs.scroll.refresh, 500);
+
+    // 监听加载图片事件
+    this.$bus.$on("itemImageLoad", () => {
+      // console.log("监听到");
+      // this.$refs.scroll.refresh();
+      refresh();
+      // console.log(1);
+    });
+  },
+
+  activated() {
+    this.$refs.scroll.refresh();
+    this.$refs.scroll.scrollTo(0, this.saveY, 0);
+    this.$refs.scroll.refresh();
+  },
+  deactivated() {
+    this.saveY = this.$refs.scroll.getScrollY();
   },
 
   data() {
@@ -88,9 +144,18 @@ export default {
       currentType: "pop",
 
       isShowBackTop: false,
+
+      // 记录吸顶的元素位置
+      tabOffsetTop: 0,
+      isTabfixed: false,
+
+      saveY: 0,
     };
   },
+
   methods: {
+    // 防抖函数
+
     // 获取函数
     tabClick(index) {
       switch (index) {
@@ -104,6 +169,8 @@ export default {
           this.currentType = "sell";
           break;
       }
+      this.$refs.tabControl1.currentIndex = index;
+      this.$refs.tabControl2.currentIndex = index;
     },
 
     // 获取数据
@@ -139,14 +206,23 @@ export default {
     contentScroll(position) {
       // console.log(position.y);
       this.isShowBackTop = -position.y > 1000;
+
+      // 决定tabControl是否吸顶
+      this.isTabfixed = -position.y > this.tabOffsetTop;
     },
 
+    // 加载更多
     loadMore() {
       // console.log(111);
-
       this.getHomeGoods(this.currentType);
-      console.log(this.goods[this.currentType].list.length);
+      // console.log(this.goods[this.currentType].list.length);
       this.$refs.scroll.scroll.refresh();
+    },
+
+    // 监听轮播图加载完成，然后获取相应位置
+    swiperImageLoad() {
+      // console.log(this.$refs.tabControl.$el.offsetTop);
+      this.tabOffsetTop = this.$refs.tabControl2.$el.offsetTop;
     },
   },
 };

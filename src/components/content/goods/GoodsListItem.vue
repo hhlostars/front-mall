@@ -1,6 +1,6 @@
 <template>
-  <div class="goods-item">
-    <img :src="goodsItem.show.img" alt="" @load="imageLoad" />
+  <div class="goods-item" @click="itemClick">
+    <img :src="showImage" alt="" @load="imageLoad" />
     <div class="goods-info">
       <p>{{ goodsItem.title }}</p>
       <span class="price">{{ goodsItem.price }}</span>
@@ -23,7 +23,21 @@ export default {
   methods: {
     imageLoad() {
       // console.log(1);
-      this.$bus.$emit('itemImageLoad')
+      // this.$bus.$emit("itemImageLoad");
+      if (this.$route.path.indexOf("/home")) {
+        this.$bus.$emit("itemImageLoad");
+      }
+    },
+    itemClick() {
+      // console.log('dianji');
+      this.$router.push("/detail/" + this.goodsItem.iid);
+    },
+  },
+  computed: {
+    showImage() {
+      return (
+        this.goodsItem.img || this.goodsItem.image || this.goodsItem.show.img
+      );
     },
   },
 };
